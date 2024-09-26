@@ -1,0 +1,186 @@
+---
+title: "Tarea N°1 de MAT281 (Víctor Achiardi)"
+author: "Víctor Achiardi"
+date: "2024-09-14"
+output: html_document
+---
+library(klaR)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+library(ggplot2)
+library(GGally)
+require(e1071)
+library(caret)
+library(nnet)
+
+datos <- read.table(file="C:/Users/vical/Downloads/seeds_dataset.txt", header=FALSE)
+datos=data.frame(datos)
+names(datos) <- c("Ar","P","Com","Lg","An","Coe","Ls","Et")
+datos$Et=as.factor(datos$Et)
+attach(datos)
+
+#Parte 1
+nrow(datos)
+table(datos$Et)
+
+datos$Et <- factor(datos$Et, labels = c("Kama", "Rosa", "Canadian"))
+
+ggplot(datos, aes(x = Et, fill = Et)) + 
+  geom_bar() +  
+  labs(title = "Histograma de Etiquetas", x = "Etiqueta", y = "Frecuencia") +
+  scale_fill_manual(values = c("Kama" = "red", "Rosa" = "blue", "Canadian" = "green")) + 
+  theme_minimal()
+
+
+
+
+
+#Parte 2
+ggplot(datos, aes(x=Ar, fill=factor(Et, labels=c("Kama", "Rosa", "Canadian")))) + 
+  geom_histogram() +
+  labs(title="Histograma del área del grano", x ="Área", y ="Frecuencia", fill ="Etiqueta") +
+  scale_fill_manual(values=c("red", "blue", "green")) + 
+  theme_minimal()
+
+ggplot(datos, aes(x=P, fill=factor(Et, labels=c("Kama", "Rosa", "Canadian")))) + 
+  geom_histogram() +
+  labs(title="Histograma del perímetro del grano", x ="Perímetro", y ="Frecuencia", fill ="Etiqueta") +
+  scale_fill_manual(values=c("red", "blue", "green")) + 
+  theme_minimal()
+
+ggplot(datos, aes(x=Com, fill=factor(Et, labels=c("Kama", "Rosa", "Canadian")))) + 
+  geom_histogram() +
+  labs(title="Histograma de la compacidad del grano", x ="Compacidad", y ="Frecuencia", fill ="Etiqueta") +
+  scale_fill_manual(values=c("red", "blue", "green")) + 
+  theme_minimal()
+
+ggplot(datos, aes(x=Lg, fill=factor(Et, labels=c("Kama", "Rosa", "Canadian")))) + 
+  geom_histogram() +
+  labs(title="Histograma de la longitud del grano", x ="Longitud", y ="Frecuencia", fill ="Etiqueta") +
+  scale_fill_manual(values=c("red", "blue", "green")) + 
+  theme_minimal()
+
+ggplot(datos, aes(x=An, fill=factor(Et, labels=c("Kama", "Rosa", "Canadian")))) + 
+  geom_histogram() +
+  labs(title="Histograma de la anchura del grano", x ="Anchura", y ="Frecuencia", fill ="Etiqueta") +
+  scale_fill_manual(values=c("red", "blue", "green")) + 
+  theme_minimal()
+
+ggplot(datos, aes(x=Coe, fill=factor(Et, labels=c("Kama", "Rosa", "Canadian")))) + 
+  geom_histogram() +
+  labs(title="Histograma del coeficiente de asimetría del grano", x ="Coeficiente de asimetría", y ="Frecuencia", fill ="Etiqueta") +
+  scale_fill_manual(values=c("red", "blue", "green")) + 
+  theme_minimal()
+ggplot(datos, aes(x=Ls, fill=factor(Et, labels=c("Kama", "Rosa", "Canadian")))) + 
+  geom_histogram() +
+  labs(title="Histograma de la longitud del sucro del grano", x ="Longitud del sucro", y ="Frecuencia", fill ="Etiqueta") +
+  scale_fill_manual(values=c("red", "blue", "green")) + 
+  theme_minimal()
+
+
+
+
+
+#Curtosis
+curtosis<- function(data, variable, etiqueta) {
+  lista <- list()
+  
+  for (i in variable) {
+    curtosis <- tapply(data[[i]], data[[etiqueta]], kurtosis)
+    lista[[i]] <- curtosis
+  }
+  return(lista)
+}
+curtosis(datos, names(datos)[-c(8)], "Et")
+
+
+
+#Asimetría
+skew<- function(data2, variable2, etiqueta2) {
+  lista2 <- list()
+  
+  for (l in variable2) {
+    skew <- tapply(data2[[l]], data2[[etiqueta2]], skewness)
+    lista2[[l]] <- skew
+  }
+  return(lista2)
+}
+skew(datos, names(datos)[-c(8)], "Et")
+
+
+
+
+
+
+
+#Parte 3
+ggpairs(datos, aes(color = Et, alpha = 0.6),columns = 1:7) + 
+  theme_minimal() 
+
+
+#Parte 4
+#Con las 8 covariables.
+datos <- read.table(file="C:/Users/vical/Downloads/seeds_dataset.txt", header=FALSE)
+datos <- data.frame(datos)
+names(datos) <- c("Ar","P","Com","Lg","An","Coe","Ls","Et")
+datos$Et <- as.factor(datos$Et)
+datos$Et <- factor(datos$Et, labels = c("Kama", "Rosa", "Canadian"))
+
+
+
+regresion <- function(data, variable, k) {
+  set.seed(1)  
+  control <- trainControl(method = "cv", number = k)
+  modelo <- train(as.formula(paste(variable, "~ .")),
+                 data = data,
+                 method = "multinom",  
+                 trControl = control)
+  
+  return(modelo)
+}
+
+validacion <- regresion(datos, "Et", 10)
+print(validacion$results)
+
+
+
+
+
+lda <- function(data, variable, k) {
+  set.seed(1)  
+  control <- trainControl(method = "cv", number = k)
+  modelo2 <- train(as.formula(paste(variable, "~ .")),
+                 data = data,
+                 method = "lda",  
+                 trControl = control)
+  
+  return(modelo2)
+}
+
+validacion2 <- lda(datos, "Et", 10)
+print(validacion2$results)
+
+
+results <- resamples(list(Logística = validacion, LDA = validacion2))
+summary(results)
+
+
+
+#Sin las covariables de área y perímetro.
+datos2 <- datos[, !names(datos) %in% c("Ar", "P")]
+validacion_cortado <- regresion(datos2, "Et", 10)
+validacion_cortado2 <- lda(datos2, "Et", 10)
+results2 <- resamples(list(Logística = validacion_cortado, LDA = validacion_cortado2))
+summary(results2)
+
+#Sin las covariables de coeficiente de asimetría y longitud de surco.
+datos2 <- datos[, !names(datos) %in% c("Coe", "Ls")]
+validacion_cortado <- regresion(datos2, "Et", 10)
+validacion_cortado2 <- lda(datos2, "Et", 10)
+results2 <- resamples(list(Logística = validacion_cortado, LDA = validacion_cortado2))
+summary(results2)
+```
