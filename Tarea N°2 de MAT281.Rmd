@@ -1,0 +1,84 @@
+---
+title: "Tarea 2 de MAT281"
+author: "Víctor Achiardi"
+date: "2024-10-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r cars}
+library("TSA")
+library(ggplot2)
+library(GGally)
+library(caret)
+library(forecast)
+require(e1071)
+library(Metrics) 
+
+#Parte 1
+datos<-read.table(file="C:/Users/vical/Downloads/wind_data.txt", header = TRUE)
+
+
+ggplot(datos, aes(x = as.Date(paste(datos$year, datos$month, datos$day, sep="-")), y=RPT)) +
+  geom_line() +
+  labs(title="Velocidades del viento en RPT", x= "Tiempo", y ="Velocidad del viento")
+
+
+hist(datos$RPT, main="Histograma de RPT", ylab="Velocidad del viento", xlab="Tiempo")
+
+
+sqrt_RPT<-sqrt(datos$RPT)
+
+ggplot(datos, aes(x=as.Date(paste(datos$year, datos$month, datos$day, sep="-")), y=sqrt_RPT)) +
+  geom_line() +
+  labs(title="Velocidades del viento en RPT (raíz cuadrada)", x = "Fecha", y = "Velocidad del viento")
+
+
+
+hist(sqrt_RPT, main="Histograma de RPT (raíz cuadrada)", ylab="Velocidad del viento", xlab="Tiempo")
+
+
+
+# Parte 2 (a)
+promedio_RPT<-mean(sqrt_RPT, na.rm = TRUE)
+resta_RPT<-sqrt_RPT - promedio_RPT
+
+# Parte 2 (b)
+serie_temporal<-ts(resta_RPT, frequency=365, start=c(min(datos$year), min(datos$month)))
+descomposicion<-decompose(serie_temporal)
+plot(descomposicion)
+
+serie_sin_periodicidad<-serie_temporal - descomposicion$trend
+plot(serie_sin_periodicidad, main="Serie temporal en RPT (sin periodicidad)", ylab="Velocidad del viento", xlab="Tiempo")
+
+
+
+
+# Parte 3
+residuos<-descomposicion$random
+residuos_nuevo<-na.omit(residuos)
+
+plot(residuos_nuevo, main="Residuos de la serie temporal en RPT", ylab="Velocidad del viento", xlab="Tiempo")
+acf(residuos_nuevo, main="AFC de residuos")
+
+hist(residuos_nuevo, main="Histograma de residuos de serie temporal", ylab="Velocidad del viento", xlab="Tiempo")
+
+
+
+# Parte 4
+arma<-auto.arima(residuos_nuevo, d=0, seasonal=FALSE)
+arma
+summary(arma)
+
+
+# Parte 5: Validación cruzada
+pronostico<-function(x, h) { forecast(arma, h=h) }
+serie_sin_periodicidad<-na.omit(serie_sin_periodicidad)
+vc<-tsCV(serie_sin_periodicidad, pronostico, h=5)
+summary(vc)
+
+sqrt(mean(vc^2, na.rm=TRUE))  
+```
